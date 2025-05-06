@@ -1,29 +1,30 @@
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from '../subworkflows/local/utils_nfcore_treeinference_pipeline'
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RUN MAIN WORKFLOW
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
+include { GETLOCUSLIST } from '../modules/local/getlocuslist/main'
+include { SAMPLETOLOCUS } from '../modules/local/sampletolocus/main'
+include { MAFFT_ALIGN } from '../modules/nf-core/mafft/align/main'
+include { STRIPR } from '../modules/local/stripr/main'
+include { IQTREE } from '../modules/local/iqtree/main'
 
 workflow TREEINFERENCE {
 
     take:
-    ch_samplesheet // channel: samplesheet read in from --input
+    input_dir
+
     main:
 
     ch_versions = Channel.empty()
 
-    //
-    // Collate and save software versions
-    //
+    input_ch = Channel.fromPath(input_dir + '/*.fasta').collect().map{[[id: 'all_samples'], it]}
+
+    GETLOCUSLIST ( input_ch )
+    SAMPLETOLOCUS ( GETLOCUSLIST.out.loci.splitText().map{[[id: it[1].trim()], it[1].trim()]}, input_ch )
+    MAFFT_ALIGN ( SAMPLETOLOCUS.out.fasta, [[], []], [[], []], [[], []], [[], []], [[], []], [])
+    STRIPR ( MAFFT_ALIGN.out.fas )
+    IQTREE ( STRIPR.out.fasta.map{it[1]}.filter{file -> file.readLines().count{it.startsWith(">")} >= 3}.collect().map{[[id: 'alignments'], it]} )
+
     softwareVersionsToYAML(ch_versions)
         .collectFile(
             storeDir: "${params.outdir}/pipeline_info",
@@ -37,9 +38,3 @@ workflow TREEINFERENCE {
     versions       = ch_versions                 // channel: [ path(versions.yml) ]
 
 }
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    THE END
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/

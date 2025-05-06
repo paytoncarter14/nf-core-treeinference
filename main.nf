@@ -30,7 +30,7 @@ include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_tree
 workflow NFCORE_TREEINFERENCE {
 
     take:
-    samplesheet // channel: samplesheet read in from --input
+    input_dir // channel: samplesheet read in from --input
 
     main:
 
@@ -38,7 +38,7 @@ workflow NFCORE_TREEINFERENCE {
     // WORKFLOW: Run pipeline
     //
     TREEINFERENCE (
-        samplesheet
+        input_dir
     )
 }
 /*
@@ -66,7 +66,7 @@ workflow {
     // WORKFLOW: Run main workflow
     //
     NFCORE_TREEINFERENCE (
-        PIPELINE_INITIALISATION.out.samplesheet
+        params.input
     )
     //
     // SUBWORKFLOW: Run completion tasks
