@@ -167,5 +167,10 @@
         {
             "$ref": "#/$defs/generic_options"
         }
-    ]
+    ],
+    "properties": {
+        "locus_list": {
+            "type": "string"
+        }
+    }
 }

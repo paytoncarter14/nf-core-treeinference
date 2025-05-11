@@ -1,0 +1,21 @@
+2025-05-09T17:34:00,029 Using pip 21.2.3 from /usr/lib/python3.9/site-packages/pip (python 3.9)
+2025-05-09T17:34:00,035 Non-user install because user site-packages disabled
+2025-05-09T17:34:00,074 Created temporary directory: /tmp/pip-ephem-wheel-cache-wxvw1zj4
+2025-05-09T17:34:00,074 Created temporary directory: /tmp/pip-req-tracker-iwmaeo8h
+2025-05-09T17:34:00,076 Initialized build tracking at /tmp/pip-req-tracker-iwmaeo8h
+2025-05-09T17:34:00,077 Created build tracker: /tmp/pip-req-tracker-iwmaeo8h
+2025-05-09T17:34:00,079 Entered build tracker: /tmp/pip-req-tracker-iwmaeo8h
+2025-05-09T17:34:00,080 Created temporary directory: /tmp/pip-install-xbqumex4
+2025-05-09T17:34:00,081 ERROR: You must give at least one requirement to install (see "pip help install")
+2025-05-09T17:34:00,083 Exception information:
+2025-05-09T17:34:00,083 Traceback (most recent call last):
+2025-05-09T17:34:00,083   File "/usr/lib/python3.9/site-packages/pip/_internal/cli/base_command.py", line 173, in _main
+2025-05-09T17:34:00,083     status = self.run(options, args)
+2025-05-09T17:34:00,083   File "/usr/lib/python3.9/site-packages/pip/_internal/cli/req_command.py", line 203, in wrapper
+2025-05-09T17:34:00,083     return func(self, options, args)
+2025-05-09T17:34:00,083   File "/usr/lib/python3.9/site-packages/pip/_internal/commands/install.py", line 286, in run
+2025-05-09T17:34:00,083     reqs = self.get_requirements(args, options, finder, session)
+2025-05-09T17:34:00,083   File "/usr/lib/python3.9/site-packages/pip/_internal/cli/req_command.py", line 409, in get_requirements
+2025-05-09T17:34:00,083     raise CommandError(
+2025-05-09T17:34:00,083 pip._internal.exceptions.CommandError: You must give at least one requirement to install (see "pip help install")
+2025-05-09T17:34:00,100 Removed build tracker: '/tmp/pip-req-tracker-iwmaeo8h'

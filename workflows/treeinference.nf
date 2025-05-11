@@ -22,14 +22,19 @@ workflow TREEINFERENCE {
 
     input_ch = Channel.fromPath(input_dir + '/*.fasta').collect().map{[[id: 'all_samples'], it]}
 
-    GETLOCUSLIST ( input_ch )
-    SAMPLETOLOCUS ( GETLOCUSLIST.out.loci.splitText().map{[[id: it[1].trim()], it[1].trim()]}, input_ch )
-    MAFFT_ALIGN ( SAMPLETOLOCUS.out.fasta, [[], []], [[], []], [[], []], [[], []], [[], []], [])
+    if (params.locus_list == null) {
+        locus_list = GETLOCUSLIST ( input_ch )
+    } else {
+        locus_list = Channel.fromPath(params.locus_list).map{[[id: 'locus_list'], it]}
+    }
+
+    SAMPLETOLOCUS ( locus_list.splitText().map{[[id: it[1].trim()], it[1].trim()]}, input_ch )
+    MAFFT_ALIGN ( SAMPLETOLOCUS.out.fasta.filter{it[1].size() > 0}, [[], []], [[], []], [[], []], [[], []], [[], []], [])
     STRIPR ( MAFFT_ALIGN.out.fas )
     TRIMAL ( STRIPR.out.fasta )
     IQTREE ( TRIMAL.out.fasta.filter{file -> file[1].readLines().count{it.startsWith(">")} >= 4} )
     IQTREECONCAT ( TRIMAL.out.fasta.map{it[1]}.filter{file -> file.readLines().count{it.startsWith(">")} >= 4}.collect().map{[[id: 'alignments'], it]} )
-    WASTRAL ( IQTREE.out.tree.collect() )
+    WASTRAL ( IQTREE.out.tree.map{it[1]}.collect().map{[[id: 'trees'], it]} )
 
     softwareVersionsToYAML(ch_versions)
         .collectFile(
