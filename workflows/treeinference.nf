@@ -23,7 +23,8 @@ workflow TREEINFERENCE {
     input_ch = Channel.fromPath(input_dir + '/*.fasta').collect().map{[[id: 'all_samples'], it]}
 
     if (params.locus_list == null) {
-        locus_list = GETLOCUSLIST ( input_ch )
+        GETLOCUSLIST( input_ch )
+        locus_list = GETLOCUSLIST.out.loci
     } else {
         locus_list = Channel.fromPath(params.locus_list).map{[[id: 'locus_list'], it]}
     }
