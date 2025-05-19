@@ -32,9 +32,16 @@ workflow TREEINFERENCE {
     SAMPLETOLOCUS ( locus_list.splitText().map{[[id: it[1].trim()], it[1].trim()]}, input_ch )
     MAFFT_ALIGN ( SAMPLETOLOCUS.out.fasta.filter{it[1].size() > 0}, [[], []], [[], []], [[], []], [[], []], [[], []], [])
     STRIPR ( MAFFT_ALIGN.out.fas )
-    TRIMAL ( STRIPR.out.fasta )
-    IQTREE ( TRIMAL.out.fasta.filter{file -> file[1].readLines().count{it.startsWith(">")} >= 4} )
-    IQTREECONCAT ( TRIMAL.out.fasta.map{it[1]}.filter{file -> file.readLines().count{it.startsWith(">")} >= 4}.collect().map{[[id: 'alignments'], it]} )
+
+    if (params.use_trimal == true) {
+        TRIMAL ( STRIPR.out.fasta )
+        iqtree_input = TRIMAL.out.fasta
+    } else {
+        iqtree_input = STRIPR.out.fasta
+    }
+    
+    IQTREE ( iqtree_input.filter{file -> file[1].readLines().count{it.startsWith(">")} >= 4} )
+    IQTREECONCAT ( iqtree_input.map{it[1]}.filter{file -> file.readLines().count{it.startsWith(">")} >= 4}.collect().map{[[id: 'alignments'], it]} )
     WASTRAL ( IQTREE.out.tree.map{it[1]}.collect().map{[[id: 'trees'], it]} )
 
     softwareVersionsToYAML(ch_versions)
