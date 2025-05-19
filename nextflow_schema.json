@@ -171,6 +171,10 @@
     "properties": {
         "locus_list": {
             "type": "string"
+        },
+        "use_trimal": {
+            "type": "boolean",
+            "default": true
         }
     }
 }
