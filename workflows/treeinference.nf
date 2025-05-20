@@ -29,7 +29,14 @@ workflow TREEINFERENCE {
         locus_list = Channel.fromPath(params.locus_list).map{[[id: 'locus_list'], it]}
     }
 
-    SAMPLETOLOCUS ( locus_list.splitText().map{[[id: it[1].trim()], it[1].trim()]}, input_ch )
+    locus_list = locus_list.splitText().map{[[id: it[1].trim()], it[1].trim()]}
+
+    if (params.exclude_list != null) {
+        exclude_set = file(params.exclude_list).readLines().collect{it.trim()}.toSet()
+        locus_list = locus_list.filter{!exclude_set.contains(it[1])}
+    }
+
+    SAMPLETOLOCUS ( locus_list, input_ch )
     MAFFT_ALIGN ( SAMPLETOLOCUS.out.fasta.filter{it[1].size() > 0}, [[], []], [[], []], [[], []], [[], []], [[], []], [])
     STRIPR ( MAFFT_ALIGN.out.fas )
 
