@@ -14,17 +14,17 @@ process TRIMAL {
     when:
     task.ext.when == null || task.ext.when
 
-    shell:
+    script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    '''
-    trimal -in !{fasta} -out !{fasta.simpleName}.trimmed.fasta -automated1
+    """
+    trimal -in ${fasta} -out ${fasta.simpleName}.trimmed.fasta ${args}
 
     cat <<-END_VERSIONS > versions.yml
     "!{task.process}":
         sampletolocus:
     END_VERSIONS
-    '''
+    """
 
     stub:
     def args = task.ext.args ?: ''
