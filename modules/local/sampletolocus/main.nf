@@ -10,16 +10,17 @@ process SAMPLETOLOCUS {
 
     output:
     tuple val(meta), path("*.fasta"), emit: fasta
+    tuple val(meta), path('SAMPLETOLOCUS.*.stats'), emit: stats
     path "versions.yml" , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
-    shell:
+    script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    '''
-    awk -v locus="!{locus}" '
+    """
+    awk -v locus="${locus}" '
     FNR == 1 {
         n = split(FILENAME, path_parts, "/")
         full = path_parts[n]
@@ -31,22 +32,24 @@ process SAMPLETOLOCUS {
     }
 
     /^>/ {
-    show = ($0 == ">" locus)
+    show = (\$0 == ">" locus)
     }
 
     show {
-        if ($0 ~ /^>/)
+        if (\$0 ~ /^>/)
             print ">" base
         else
             print
     }
-    ' fasta/* > !{locus}.fasta
+    ' fasta/* > ${locus}.fasta
+
+    echo "${locus},\$(grep -c "^>" ${locus}.fasta)" > SAMPLETOLOCUS.${locus}.stats || true
 
     cat <<-END_VERSIONS > versions.yml
-    "!{task.process}":
+    "${task.process}":
         sampletolocus:
     END_VERSIONS
-    '''
+    """
 
     stub:
     def args = task.ext.args ?: ''
