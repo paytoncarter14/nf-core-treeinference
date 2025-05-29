@@ -1,25 +1,24 @@
 process SAMPLETOLOCUS {
-    tag "$meta.id"
+    tag "$meta1.id"
     label 'process_single'
     conda "${moduleDir}/environment.yml"
-    container "biocontainers/grep:3.4--h516909a_0"
+    container 'biocontainers/grep:3.4--h516909a_0'
 
     input:
-    tuple val(meta), val(locus)
-    tuple val(meta2), path(fastas, stageAs: 'fasta/')
+    tuple val(meta1), val(locus)
+    tuple val(meta2), path(fasta, stageAs: 'input/')
 
     output:
-    tuple val(meta), path("*.fasta"), emit: fasta
-    tuple val(meta), path('SAMPLETOLOCUS.*.stats'), emit: stats
-    path "versions.yml" , emit: versions
+    tuple val(meta1), path("output/*.fasta"), emit: fasta
+    path('versions.yml') , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
     """
+    mkdir output
+
     awk -v locus="${locus}" '
     FNR == 1 {
         n = split(FILENAME, path_parts, "/")
@@ -41,9 +40,7 @@ process SAMPLETOLOCUS {
         else
             print
     }
-    ' fasta/* > ${locus}.fasta
-
-    echo "${locus},\$(grep -c "^>" ${locus}.fasta)" > SAMPLETOLOCUS.${locus}.stats || true
+    ' input/* > output/${locus}.fasta
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -52,11 +49,7 @@ process SAMPLETOLOCUS {
     """
 
     stub:
-    def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    touch ${prefix}.fasta
-
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         sampletolocus: 

@@ -178,6 +178,14 @@
         },
         "exclude_list": {
             "type": "string"
+        },
+        "min_locus_coverage": {
+            "type": "number",
+            "default": 0.7
+        },
+        "min_taxon_coverage": {
+            "type": "number",
+            "default": 0.6
         }
     }
 }
