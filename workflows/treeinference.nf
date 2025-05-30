@@ -54,7 +54,6 @@ workflow TREEINFERENCE {
     locus_count = locus_list.count()
     sample_count = input_ch.count()
     log.info("The min_locus_coverage parameter is ${params.min_locus_coverage}")
-    locus_count.subscribe{log.info("There are ${it} total loci")}
     sample_count.subscribe{log.info("There are ${it} total samples")}
 
     input_ch = input_ch.combine(locus_count).filter{file, resolved_locus_count ->
@@ -72,6 +71,9 @@ workflow TREEINFERENCE {
     // Filter by --min_taxon_coverage parameter.
     // For example, if --min_taxon_coverage is 0.7 and there are 100 taxa,
     // loci with fewer than 70 samples are omitted.
+
+    log.info("The min_taxon_coverage parameter is ${params.min_taxon_coverage}")
+    locus_count.subscribe{log.info("There are ${it} total loci")}
 
     mafft_input = mafft_input.combine(sample_count).filter{_meta, file, resolved_sample_count ->
         file.readLines().count{it.startsWith(">")} / resolved_sample_count > params.min_taxon_coverage
