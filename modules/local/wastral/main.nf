@@ -8,7 +8,7 @@ process WASTRAL {
         'biocontainers/aster:1.19--h9948957_1' }"
     
     input:
-    tuple val(meta), path(alignments, stageAs: 'alignments/*')
+    tuple val(meta), path(trees)
 
     output:
     tuple val(meta), path("*.treefile"), emit: tree
@@ -17,14 +17,12 @@ process WASTRAL {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: meta.id
     """
-    cat alignments/* > input.treefile
-    wastral -i input.treefile -o wastral.treefile -t ${task.cpus}
+    wastral -i ${trees} -o wastral.treefile -t ${task.cpus}
     """
 
     stub:
     """
-    touch ${prefix}.treefile
+    touch wastral.treefile
     """
 }

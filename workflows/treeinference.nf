@@ -2,6 +2,8 @@
 // TODO: module containers and conda envs
 // TODO: get rid of all shell blocks in modules
 // TODO: stubs and versions in all modules
+// TODO: parameter and input validation
+// TODO: concatenated alignment matrix
 
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
@@ -16,6 +18,8 @@ include { IQTREE } from '../modules/local/iqtree/main'
 include { IQTREECONCAT } from '../modules/local/iqtreeconcat/main'
 include { TRIMAL } from '../modules/local/trimal/main'
 include { WASTRAL } from '../modules/local/wastral/main'
+include { CONCATTREES } from '../modules/local/concattrees/main'
+include { IQTREEGCF } from '../modules/local/iqtreegcf/main'
 
 workflow TREEINFERENCE {
 
@@ -99,12 +103,21 @@ workflow TREEINFERENCE {
     // tries to make bootstraps with fewer than 4 samples.
     iqtree_input_filtered = iqtree_input.filter{file -> file[1].readLines().count{it.startsWith(">")} >= 4}
     
-    // Run IQTREE on each locus to create gene trees, then create species tree with weighted-ASTRAL.
+    // Run IQTREE on each locus to create gene trees.
     IQTREE ( iqtree_input_filtered )
-    WASTRAL ( IQTREE.out.tree.map{it[1]}.collect().map{[[id: 'all_trees'], it]} )
+
+    // Concatenate trees for wASTRAL and IQTREE gCF
+    CONCATTREES( IQTREE.out.tree.map{it[1]}.collect().map{[[id: 'all_trees'], it]} )
+
+    // Create species tree with wASTRAL
+    WASTRAL ( CONCATTREES.out.trees )
 
     // Run IQTREE on a concatenation of all loci.
     IQTREECONCAT ( iqtree_input_filtered.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
+
+    // Use IQTREE to calculate gCF
+    IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )
+
 
     /* TODO: stats collection 
     CREATEDB(

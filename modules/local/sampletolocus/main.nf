@@ -2,7 +2,10 @@ process SAMPLETOLOCUS {
     tag "$meta1.id"
     label 'process_single'
     conda "${moduleDir}/environment.yml"
-    container 'biocontainers/grep:3.4--h516909a_0'
+
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/grep:3.4--h516909a_0' :
+        'biocontainers/grep:3.4--h516909a_0' }"
 
     input:
     tuple val(meta1), val(locus)
