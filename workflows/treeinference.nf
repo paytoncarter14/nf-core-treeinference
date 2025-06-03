@@ -20,6 +20,7 @@ include { TRIMAL } from '../modules/local/trimal/main'
 include { WASTRAL } from '../modules/local/wastral/main'
 include { CONCATTREES } from '../modules/local/concattrees/main'
 include { IQTREEGCF } from '../modules/local/iqtreegcf/main'
+include { SUPERMATRIX } from '../modules/local/supermatrix/main'
 
 workflow TREEINFERENCE {
 
@@ -117,6 +118,9 @@ workflow TREEINFERENCE {
 
     // Use IQTREE to calculate gCF
     IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )
+
+    // Make alignment supermatrix for viewing convenience and IQTREE sCF
+    SUPERMATRIX ( iqtree_input.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
 
 
     /* TODO: stats collection 
