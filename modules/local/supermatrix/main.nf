@@ -19,6 +19,7 @@ process SUPERMATRIX {
     """
 #!/usr/bin/env python
 
+import argparse
 import glob
 from Bio import SeqIO
 
