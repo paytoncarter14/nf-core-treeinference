@@ -121,7 +121,7 @@ workflow TREEINFERENCE {
     IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )
 
     // Use IQTREE to calculate gCF.
-    IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )    
+    // IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )    
 
     // Run quartet sampling on concatenated IQTREE tree and wASTRAL tree.
     QUARTETSAMPLING ( IQTREECONCAT.out.tree, SUPERMATRIX.out.supermatrix)
