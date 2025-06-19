@@ -114,14 +114,14 @@ workflow TREEINFERENCE {
     // Create species tree with wASTRAL
     WASTRAL ( CONCATTREES.out.trees )
 
-    // Run IQTREE on a concatenation of all loci.
-    IQTREECONCAT ( iqtree_input_filtered.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
+    // Make alignment supermatrix for IQTREE and quartet sampling
+    SUPERMATRIX ( iqtree_input.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
+
+    // Run IQTREE on the supermatrix.
+    IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )
 
     // Use IQTREE to calculate gCF.
-    IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )
-
-    // Make alignment supermatrix for viewing convenience, IQTREE sCF, and quartet sampling
-    SUPERMATRIX ( iqtree_input.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
+    IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )    
 
     // Run quartet sampling on concatenated IQTREE tree and wASTRAL tree.
     QUARTETSAMPLING ( IQTREECONCAT.out.tree, SUPERMATRIX.out.supermatrix)

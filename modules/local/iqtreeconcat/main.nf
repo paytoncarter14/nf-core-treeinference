@@ -8,10 +8,13 @@ process IQTREECONCAT {
         'biocontainers/iqtree:2.3.4--h21ec9f0_0' }"
     
     input:
-    tuple val(meta), path(alignments, stageAs: 'alignments/*')
+    tuple val(meta), path(supermatrix)
+    tuple val(meta2), path(partitions)
 
     output:
     tuple val(meta), path("*.treefile"), emit: tree
+    tuple val(meta), path("*.iqtree"), emit: report
+    tuple val(meta), path("*.log"), emit: log
 
     when:
     task.ext.when == null || task.ext.when
@@ -19,11 +22,13 @@ process IQTREECONCAT {
     script:
     def prefix = task.ext.prefix ?: meta.id
     """
-    iqtree -s alignments -bnni -bb 1000 -safe -nt AUTO -pre ${prefix}
+    iqtree -s ${supermatrix} -p ${partitions} -bnni -bb 1000 -safe -nt AUTO -pre ${prefix}
     """
 
     stub:
     """
     touch ${prefix}.treefile
+    touch ${prefix}.iqtree
+    touch ${prefix}.report
     """
 }
