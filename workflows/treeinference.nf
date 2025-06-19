@@ -21,10 +21,11 @@ include { WASTRAL } from '../modules/local/wastral/main'
 include { CONCATTREES } from '../modules/local/concattrees/main'
 include { IQTREEGCF } from '../modules/local/iqtreegcf/main'
 include { SUPERMATRIX } from '../modules/local/supermatrix/main'
+include { QUARTETSAMPLING } from '../modules/local/quartetsampling/main'
 
 workflow TREEINFERENCE {
 
-    // TODO: allow sample sheet in addition to input_dir
+    // TODO: allow sample sheet in addition to input_dir.
     take:
     input_dir
 
@@ -67,10 +68,10 @@ workflow TREEINFERENCE {
 
     input_ch.count().subscribe{log.info("There are ${it} samples that passed the min_locus_coverage filter")}
 
-    // Convert one file per sample to one file per locus
+    // Convert one file per sample to one file per locus.
     SAMPLETOLOCUS ( locus_list.map{[[id: it], it]}, input_ch.collect().map{[[id: it.simpleName], it]} )
 
-    // Remove empty files
+    // Remove empty files.
     mafft_input = SAMPLETOLOCUS.out.fasta.filter{it[1].size() > 0}
 
     // Filter by --min_taxon_coverage parameter.
@@ -86,13 +87,13 @@ workflow TREEINFERENCE {
 
     mafft_input.count().subscribe{log.info("There are ${it} loci that passed the min_sample_coverage filter")}
 
-    // Align with MAFFT
+    // Align with MAFFT.
     MAFFT_ALIGN ( mafft_input.filter{it[1].size() > 0}, [[], []], [[], []], [[], []], [[], []], [[], []], [])
 
     // Get rid of _R_ at beginning of reverse complemented MAFFT sequences.
     STRIPR ( MAFFT_ALIGN.out.fas )
 
-    // Logic for the --use_trimal parameter
+    // Logic for the --use_trimal parameter.
     if (params.use_trimal == true) {
         TRIMAL ( STRIPR.out.fasta )
         iqtree_input = TRIMAL.out.fasta
@@ -107,7 +108,7 @@ workflow TREEINFERENCE {
     // Run IQTREE on each locus to create gene trees.
     IQTREE ( iqtree_input_filtered )
 
-    // Concatenate trees for wASTRAL and IQTREE gCF
+    // Concatenate trees for wASTRAL and IQTREE gCF.
     CONCATTREES( IQTREE.out.tree.map{it[1]}.collect().map{[[id: 'all_trees'], it]} )
 
     // Create species tree with wASTRAL
@@ -116,12 +117,14 @@ workflow TREEINFERENCE {
     // Run IQTREE on a concatenation of all loci.
     IQTREECONCAT ( iqtree_input_filtered.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
 
-    // Use IQTREE to calculate gCF
+    // Use IQTREE to calculate gCF.
     IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )
 
-    // Make alignment supermatrix for viewing convenience and IQTREE sCF
+    // Make alignment supermatrix for viewing convenience, IQTREE sCF, and quartet sampling
     SUPERMATRIX ( iqtree_input.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
 
+    // Run quartet sampling on concatenated IQTREE tree and wASTRAL tree.
+    QUARTETSAMPLING ( IQTREECONCAT.out.tree, SUPERMATRIX.out.supermatrix)
 
     /* TODO: stats collection 
     CREATEDB(
