@@ -8,7 +8,7 @@ process SAMPLETOLOCUS {
         'biocontainers/grep:3.4--h516909a_0' }"
 
     input:
-    tuple val(meta1), val(locus)
+    tuple val(meta1), val(loci)
     tuple val(meta2), path(fasta, stageAs: 'input/')
 
     output:
@@ -21,29 +21,42 @@ process SAMPLETOLOCUS {
     script:
     """
     mkdir output
+    echo "${loci.join("\n")}" > loci.txt
 
-    awk -v locus="${locus}" '
-    FNR == 1 {
-        n = split(FILENAME, path_parts, "/")
-        full = path_parts[n]
-        split(full, name_parts, /\\./)
-        base = name_parts[1]
-        for (i = 2; i < length(name_parts); i++) {
-            base = base "." name_parts[i]
+    for f in input/*; do
+
+        sample=\$(basename "\$f")
+        sample="\${sample%.*}"  # remove extension
+
+        awk -v sample="\$sample" -v locifile="loci.txt" '
+        BEGIN {
+            # Read allowed loci into an array
+            while ((getline line < locifile) > 0) {
+                loci[line] = 1
+            }
+            close(locifile)
         }
-    }
+        /^>/ {
+            # Extract locus name after >
+            locus = substr(\$0, 2)
+            # Check if locus is allowed
+            if (!(locus in loci)) {
+                skip = 1
+            } else {
+                skip = 0
+                header = ">" sample
+                print header >> "output/" locus ".fasta"
+            }
+            next
+        }
+        {
+            if (!skip) {
+                print >> "output/" locus ".fasta"
+            }
+        }
+        ' "\$f"
+    done
 
-    /^>/ {
-    show = (\$0 == ">" locus)
-    }
-
-    show {
-        if (\$0 ~ /^>/)
-            print ">" base
-        else
-            print
-    }
-    ' input/* > output/${locus}.fasta
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

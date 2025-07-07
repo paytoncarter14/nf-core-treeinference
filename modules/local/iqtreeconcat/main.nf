@@ -20,7 +20,7 @@ process IQTREECONCAT {
     task.ext.when == null || task.ext.when
 
     script:
-    def prefix = task.ext.prefix ?: meta.id
+    def prefix = 'iqtree'
     """
     iqtree -s ${supermatrix} -p ${partitions} -bnni -bb 1000 -safe -nt AUTO -pre ${prefix}
     """

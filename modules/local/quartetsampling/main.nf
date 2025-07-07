@@ -11,9 +11,9 @@ process QUARTETSAMPLING {
     tuple val(meta2), path(supermatrix)
 
     output:
-    tuple val(meta), path("quartet_sampling.labeled.tre"), emit: tree
-    tuple val(meta), path("quartet_sampling.node.counts.csv"), emit: counts
-    tuple val(meta), path("quartet_sampling.node.scores.csv"), emit: scores
+    tuple val(meta), path("*.labeled.tre"), emit: tree
+    tuple val(meta), path("*.node.counts.csv"), emit: counts
+    tuple val(meta), path("*.node.scores.csv"), emit: scores
 
     when:
     task.ext.when == null || task.ext.when
@@ -29,7 +29,7 @@ process QUARTETSAMPLING {
         --threads ${task.cpus} \
         --lnlike 2 \
         --engine iqtree \
-        --result-prefix quartet_sampling
+        --result-prefix ${tree.simpleName}
     """
 
     stub:

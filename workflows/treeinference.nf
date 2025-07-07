@@ -21,7 +21,8 @@ include { WASTRAL } from '../modules/local/wastral/main'
 include { CONCATTREES } from '../modules/local/concattrees/main'
 include { IQTREEGCF } from '../modules/local/iqtreegcf/main'
 include { SUPERMATRIX } from '../modules/local/supermatrix/main'
-include { QUARTETSAMPLING } from '../modules/local/quartetsampling/main'
+include { QUARTETSAMPLING as QUARTETSAMPLING_IQTREE } from '../modules/local/quartetsampling/main'
+include { QUARTETSAMPLING as QUARTETSAMPLING_WASTRAL } from '../modules/local/quartetsampling/main'
 
 workflow TREEINFERENCE {
 
@@ -68,11 +69,14 @@ workflow TREEINFERENCE {
 
     input_ch.count().subscribe{log.info("There are ${it} samples that passed the min_locus_coverage filter")}
 
+    locus_list = locus_list.collect().map{[[id: 'all_loci'], it]}
+    input_ch = input_ch.collect().map{[[id: 'all_fasta'], it]}
+
     // Convert one file per sample to one file per locus.
-    SAMPLETOLOCUS ( locus_list.map{[[id: it], it]}, input_ch.collect().map{[[id: it.simpleName], it]} )
+    SAMPLETOLOCUS ( locus_list, input_ch )
 
     // Remove empty files.
-    mafft_input = SAMPLETOLOCUS.out.fasta.filter{it[1].size() > 0}
+    mafft_input = SAMPLETOLOCUS.out.fasta.map{it[1]}.flatten().map{[[id: it.simpleName], it]}.filter{it[1].size() > 0}
 
     // Filter by --min_taxon_coverage parameter.
     // For example, if --min_taxon_coverage is 0.7 and there are 100 taxa,
@@ -124,7 +128,8 @@ workflow TREEINFERENCE {
     // IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )    
 
     // Run quartet sampling on concatenated IQTREE tree and wASTRAL tree.
-    QUARTETSAMPLING ( IQTREECONCAT.out.tree, SUPERMATRIX.out.supermatrix)
+    QUARTETSAMPLING_IQTREE ( IQTREECONCAT.out.tree, SUPERMATRIX.out.supermatrix )
+    QUARTETSAMPLING_WASTRAL ( WASTRAL.out.tree, SUPERMATRIX.out.supermatrix )
 
     /* TODO: stats collection 
     CREATEDB(
