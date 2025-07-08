@@ -23,6 +23,7 @@ include { IQTREEGCF } from '../modules/local/iqtreegcf/main'
 include { SUPERMATRIX } from '../modules/local/supermatrix/main'
 include { QUARTETSAMPLING as QUARTETSAMPLING_IQTREE } from '../modules/local/quartetsampling/main'
 include { QUARTETSAMPLING as QUARTETSAMPLING_WASTRAL } from '../modules/local/quartetsampling/main'
+include { COUNTUNIQUESEQS } from '../modules/local/countuniqueseqs/main'
 
 workflow TREEINFERENCE {
 
@@ -107,10 +108,11 @@ workflow TREEINFERENCE {
 
     // This filter is necessary to prevent errors when IQTREE
     // tries to make bootstraps with fewer than 4 samples.
-    iqtree_input_filtered = iqtree_input.filter{file -> file[1].readLines().count{it.startsWith(">")} >= 4}
+    // iqtree_input_filtered = iqtree_input.filter{file -> file[1].readLines().count{it.startsWith(">")} >= 4}
+    COUNTUNIQUESEQS { iqtree_input }
     
     // Run IQTREE on each locus to create gene trees.
-    IQTREE ( iqtree_input_filtered )
+    IQTREE ( COUNTUNIQUESEQS.out.fasta.filter{it[2].trim().toInteger() >= 4}.map{it[0..1]} )
 
     // Concatenate trees for wASTRAL and IQTREE gCF.
     CONCATTREES( IQTREE.out.tree.map{it[1]}.collect().map{[[id: 'all_trees'], it]} )
