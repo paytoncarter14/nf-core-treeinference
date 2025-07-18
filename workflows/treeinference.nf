@@ -15,15 +15,18 @@ include { SAMPLETOLOCUS } from '../modules/local/sampletolocus/main'
 include { MAFFT_ALIGN } from '../modules/nf-core/mafft/align/main'
 include { STRIPR } from '../modules/local/stripr/main'
 include { IQTREE } from '../modules/local/iqtree/main'
-include { IQTREECONCAT } from '../modules/local/iqtreeconcat/main'
+// include { IQTREECONCAT } from '../modules/local/iqtreeconcat/main'
 include { TRIMAL } from '../modules/local/trimal/main'
 include { WASTRAL } from '../modules/local/wastral/main'
 include { CONCATTREES } from '../modules/local/concattrees/main'
 include { IQTREEGCF } from '../modules/local/iqtreegcf/main'
 include { SUPERMATRIX } from '../modules/local/supermatrix/main'
-include { QUARTETSAMPLING as QUARTETSAMPLING_IQTREE } from '../modules/local/quartetsampling/main'
+include { QUARTETSAMPLING as QUARTETSAMPLING_CONCAT } from '../modules/local/quartetsampling/main'
 include { QUARTETSAMPLING as QUARTETSAMPLING_WASTRAL } from '../modules/local/quartetsampling/main'
 include { COUNTUNIQUESEQS } from '../modules/local/countuniqueseqs/main'
+include { VERYFASTTREE } from '../modules/local/veryfasttree/main'
+include { VERYFASTTREE as VERYFASTTREECONCAT } from '../modules/local/veryfasttree/main'
+include { IQTREE as IQTREECONCAT } from '../modules/local/iqtree/main'
 
 workflow TREEINFERENCE {
 
@@ -35,7 +38,7 @@ workflow TREEINFERENCE {
 
     ch_versions = Channel.empty()
     input_ch = Channel.fromPath(input_dir + '/*.fasta')
-
+    log.info(params.locus_list)
     // Logic for --locus_list param.
     // --locus_list is a text file with one locus per line.
     // If --locus_list is not provided, all loci in the samples are used instead.
@@ -45,8 +48,9 @@ workflow TREEINFERENCE {
     } else {
         locus_list = Channel.fromPath(params.locus_list)
     }
+    input_ch.view()
     locus_list = locus_list.splitText().map{it.trim()}
-
+    
     // Logic for --exclude_list param.
     // --exclude_list is a text file with one locus per line.
     // Any loci in the file are excluded.
@@ -101,36 +105,45 @@ workflow TREEINFERENCE {
     // Logic for the --use_trimal parameter.
     if (params.use_trimal == true) {
         TRIMAL ( STRIPR.out.fasta )
-        iqtree_input = TRIMAL.out.fasta
+        concattrees_input = TRIMAL.out.fasta
     } else {
-        iqtree_input = STRIPR.out.fasta
+        concattrees_input = STRIPR.out.fasta
     }
 
     // This filter is necessary to prevent errors when IQTREE
     // tries to make bootstraps with fewer than 4 samples.
     // iqtree_input_filtered = iqtree_input.filter{file -> file[1].readLines().count{it.startsWith(">")} >= 4}
-    COUNTUNIQUESEQS { iqtree_input }
+    COUNTUNIQUESEQS { concattrees_input }
     
-    // Run IQTREE on each locus to create gene trees.
-    IQTREE ( COUNTUNIQUESEQS.out.fasta.filter{it[2].trim().toInteger() >= 4}.map{it[0..1]} )
+    // Run trees on each locus to create gene trees.
+    tree_input = COUNTUNIQUESEQS.out.fasta.map{it[0..1]}
+    if (params.tree_engine == 'iqtree') {
+        tree_output = IQTREE ( tree_input, [] )     
+    } else if (params.tree_engine == 'veryfasttree') {
+        tree_output = VERYFASTTREE ( tree_input )
+    }
 
-    // Concatenate trees for wASTRAL and IQTREE gCF.
-    CONCATTREES( IQTREE.out.tree.map{it[1]}.collect().map{[[id: 'all_trees'], it]} )
+    // Concatenate trees for wASTRAL
+    CONCATTREES( tree_output.out.tree.map{it[1]}.collect().map{[[id: 'all_trees'], it]} )
 
     // Create species tree with wASTRAL
     WASTRAL ( CONCATTREES.out.trees )
 
     // Make alignment supermatrix for IQTREE and quartet sampling
-    SUPERMATRIX ( iqtree_input.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
+    SUPERMATRIX ( COUNTUNIQUESEQS.out.fasta.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
 
-    // Run IQTREE on the supermatrix.
-    IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )
+    // Run trees on the supermatrix.
+    if (params.tree_engine == 'iqtree') {
+        concat_tree_output = IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )     
+    } else if (params.tree_engine == 'veryfasttree') {
+        concat_tree_output = VERYFASTTREECONCAT ( SUPERMATRIX.out.supermatrix, [] )
+    }
 
     // Use IQTREE to calculate gCF.
     // IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )    
 
-    // Run quartet sampling on concatenated IQTREE tree and wASTRAL tree.
-    QUARTETSAMPLING_IQTREE ( IQTREECONCAT.out.tree, SUPERMATRIX.out.supermatrix )
+    // Run quartet sampling on concatenated tree and wASTRAL tree.
+    QUARTETSAMPLING_CONCAT ( concat_tree_output.out.tree, SUPERMATRIX.out.supermatrix )
     QUARTETSAMPLING_WASTRAL ( WASTRAL.out.tree, SUPERMATRIX.out.supermatrix )
 
     /* TODO: stats collection 

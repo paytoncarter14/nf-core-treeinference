@@ -181,11 +181,15 @@
         },
         "min_locus_coverage": {
             "type": "number",
-            "default": 0.7
+            "default": 0
         },
         "min_taxon_coverage": {
             "type": "number",
-            "default": 0.6
+            "default": 0
+        },
+        "tree_engine": {
+            "type": "string",
+            "default": "veryfasttree"
         }
     }
 }

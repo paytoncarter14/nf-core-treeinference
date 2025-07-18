@@ -1,6 +1,6 @@
 process IQTREE {
     tag "$meta.id"
-    label 'process_low'
+    label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
@@ -8,8 +8,8 @@ process IQTREE {
         'biocontainers/iqtree:2.3.4--h21ec9f0_0' }"
     
     input:
-    // tuple val(meta), path(alignments, stageAs: 'alignments/*')
-    tuple val(meta), path(alignment)
+    tuple val(meta), path(fasta)
+    path(partitions)
 
     output:
     tuple val(meta), path("*.treefile"), emit: tree
@@ -19,8 +19,9 @@ process IQTREE {
 
     script:
     def prefix = task.ext.prefix ?: meta.id
+    def partition_flag = partitions ? '-p ${partitions}' : ''
     """
-    iqtree -s ${alignment} -bnni -bb 1000 -safe -nt AUTO -pre ${prefix}
+    iqtree -s ${fasta} ${partition_flag} -bnni -bb 1000 -safe -nt ${task.cpus} -pre ${prefix}
     """
 
     stub:
