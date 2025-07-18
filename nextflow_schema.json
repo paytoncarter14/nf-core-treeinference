@@ -181,15 +181,27 @@
         },
         "min_locus_coverage": {
             "type": "number",
-            "default": 0
+            "default": 0.0
         },
         "min_taxon_coverage": {
             "type": "number",
-            "default": 0
+            "default": 0.0
         },
         "tree_engine": {
             "type": "string",
             "default": "veryfasttree"
+        },
+        "use_wastral": {
+            "type": "boolean",
+            "default": true
+        },
+        "use_concatenated_tree": {
+            "type": "boolean",
+            "default": true
+        },
+        "use_quartet_sampling": {
+            "type": "boolean",
+            "default": true
         }
     }
 }
