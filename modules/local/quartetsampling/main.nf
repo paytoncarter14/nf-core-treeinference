@@ -2,9 +2,7 @@ process QUARTETSAMPLING {
     tag "$meta.id"
     label 'process_high'
     // conda "${moduleDir}/environment.yml"
-    // container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-    //    'https://depot.galaxyproject.org/singularity/biopython:1.66--np110py36_0' :
-    //    'biocontainers/biopython:1.66--np110py36_0' }"
+    container 'https://raw.githubusercontent.com/paytoncarter14/containers/refs/heads/main/quartet_sampling_1.3.1b.sif'
     
     input:
     tuple val(meta), path(tree)
@@ -28,7 +26,6 @@ process QUARTETSAMPLING {
         --reps 200 \
         --threads ${task.cpus} \
         --lnlike 2 \
-        --engine iqtree \
         --result-prefix ${tree.simpleName}
     """
 

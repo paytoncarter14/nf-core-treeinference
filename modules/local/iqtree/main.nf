@@ -13,6 +13,7 @@ process IQTREE {
 
     output:
     tuple val(meta), path("*.treefile"), emit: tree
+    path "versions.yml" , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -22,6 +23,7 @@ process IQTREE {
     def partition_flag = partitions ? '-p ${partitions}' : ''
     """
     iqtree -s ${fasta} ${partition_flag} -bnni -bb 1000 -safe -nt ${task.cpus} -pre ${prefix}
+    touch versions.yml
     """
 
     stub:

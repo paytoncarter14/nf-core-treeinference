@@ -38,7 +38,6 @@ workflow TREEINFERENCE {
 
     ch_versions = Channel.empty()
     input_ch = Channel.fromPath(input_dir + '/*.fasta')
-    log.info(params.locus_list)
     // Logic for --locus_list param.
     // --locus_list is a text file with one locus per line.
     // If --locus_list is not provided, all loci in the samples are used instead.
@@ -48,7 +47,6 @@ workflow TREEINFERENCE {
     } else {
         locus_list = Channel.fromPath(params.locus_list)
     }
-    input_ch.view()
     locus_list = locus_list.splitText().map{it.trim()}
     
     // Logic for --exclude_list param.
@@ -65,14 +63,12 @@ workflow TREEINFERENCE {
 
     locus_count = locus_list.count()
     sample_count = input_ch.count()
-    log.info("The min_locus_coverage parameter is ${params.min_locus_coverage}")
-    sample_count.subscribe{log.info("There are ${it} total samples")}
 
     input_ch = input_ch.combine(locus_count).filter{file, resolved_locus_count ->
         file.readLines().count{it.startsWith(">")} / resolved_locus_count > params.min_locus_coverage
     }.map{it[0]}
 
-    input_ch.count().subscribe{log.info("There are ${it} samples that passed the min_locus_coverage filter")}
+    sample_count.combine(input_ch.count()).subscribe{x, y -> log.info("${y} out of ${x} samples passed the min_locus_coverage filter")}
 
     locus_list = locus_list.collect().map{[[id: 'all_loci'], it]}
     input_ch = input_ch.collect().map{[[id: 'all_fasta'], it]}
@@ -87,14 +83,13 @@ workflow TREEINFERENCE {
     // For example, if --min_taxon_coverage is 0.7 and there are 100 taxa,
     // loci with fewer than 70 samples are omitted.
 
-    log.info("The min_taxon_coverage parameter is ${params.min_taxon_coverage}")
-    locus_count.subscribe{log.info("There are ${it} total loci")}
+    // locus_count.subscribe{log.info("${it} loci")}
 
     mafft_input = mafft_input.combine(sample_count).filter{_meta, file, resolved_sample_count ->
         file.readLines().count{it.startsWith(">")} / resolved_sample_count > params.min_taxon_coverage
     }.map{it[0..1]}
 
-    mafft_input.count().subscribe{log.info("There are ${it} loci that passed the min_sample_coverage filter")}
+    mafft_input.count().combine(locus_count).subscribe{x, y -> log.info("${x} out of ${y} loci passed the min_sample_coverage filter")}
 
     // Align with MAFFT.
     MAFFT_ALIGN ( mafft_input.filter{it[1].size() > 0}, [[], []], [[], []], [[], []], [[], []], [[], []], [])
@@ -118,13 +113,13 @@ workflow TREEINFERENCE {
     // Run trees on each locus to create gene trees.
     tree_input = COUNTUNIQUESEQS.out.fasta.map{it[0..1]}
     if (params.tree_engine == 'iqtree') {
-        tree_output = IQTREE ( tree_input, [] )     
+        tree_output = IQTREE ( tree_input, [] )
     } else if (params.tree_engine == 'veryfasttree') {
         tree_output = VERYFASTTREE ( tree_input )
     }
 
     // Concatenate trees for wASTRAL
-    CONCATTREES( tree_output.out.tree.map{it[1]}.collect().map{[[id: 'all_trees'], it]} )
+    CONCATTREES( tree_output.tree.map{it[1]}.collect().map{[[id: 'all_trees'], it]} )
 
     // Create species tree with wASTRAL
     WASTRAL ( CONCATTREES.out.trees )
@@ -136,14 +131,14 @@ workflow TREEINFERENCE {
     if (params.tree_engine == 'iqtree') {
         concat_tree_output = IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )     
     } else if (params.tree_engine == 'veryfasttree') {
-        concat_tree_output = VERYFASTTREECONCAT ( SUPERMATRIX.out.supermatrix, [] )
+        concat_tree_output = VERYFASTTREECONCAT ( SUPERMATRIX.out.supermatrix )
     }
 
-    // Use IQTREE to calculate gCF.
-    // IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )    
+    // // Use IQTREE to calculate gCF.
+    // // IQTREEGCF ( CONCATTREES.out.trees.combine(IQTREECONCAT.out.tree.map{it[1]}) )    
 
     // Run quartet sampling on concatenated tree and wASTRAL tree.
-    QUARTETSAMPLING_CONCAT ( concat_tree_output.out.tree, SUPERMATRIX.out.supermatrix )
+    QUARTETSAMPLING_CONCAT ( concat_tree_output.tree, SUPERMATRIX.out.supermatrix )
     QUARTETSAMPLING_WASTRAL ( WASTRAL.out.tree, SUPERMATRIX.out.supermatrix )
 
     /* TODO: stats collection 

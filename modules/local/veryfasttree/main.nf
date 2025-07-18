@@ -12,13 +12,16 @@ process VERYFASTTREE {
 
     output:
     tuple val(meta), path("*.tree"), emit: tree
+    path "versions.yml" , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
+    def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    VeryFastTree -gtr -nt -gamma -threads ${task.cpus} ${fasta}
+    VeryFastTree -gtr -nt -gamma -threads ${task.cpus} ${fasta} > ${prefix}.tree
+    touch versions.yml
     """
 
     stub:
