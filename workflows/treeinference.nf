@@ -27,7 +27,7 @@ include { QUARTETSAMPLING as QUARTETSAMPLING_WASTRAL } from '../modules/local/qu
 include { COUNTUNIQUESEQS } from '../modules/local/countuniqueseqs/main'
 include { VERYFASTTREE } from '../modules/local/veryfasttree/main'
 include { VERYFASTTREE as VERYFASTTREECONCAT } from '../modules/local/veryfasttree/main'
-include { IQTREE as IQTREECONCAT } from '../modules/local/iqtree/main'
+include { IQTREECONCAT } from '../modules/local/iqtreeconcat/main'
 
 workflow TREEINFERENCE {
 
@@ -174,6 +174,8 @@ workflow TREEINFERENCE {
 
     if (params.use_concatenated_tree) {
 
+        SUPERMATRIX.out.supermatrix.view()
+        SUPERMATRIX.out.partitions.view()
         // Run trees on the supermatrix.
         if (params.tree_engine == 'iqtree') {
             concat_tree_output = IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )
