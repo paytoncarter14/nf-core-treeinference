@@ -22,7 +22,7 @@ process IQTREECONCAT {
     script:
     def prefix = 'iqtree'
     """
-    iqtree -s ${supermatrix} -p ${partitions} -bnni -bb 1000 -safe -nt AUTO -pre ${prefix}
+    iqtree -s ${supermatrix} -p ${partitions} -bnni -bb 1000 -safe -nt ${task.cpus} -pre ${prefix}
     """
 
     stub:

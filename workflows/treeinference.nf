@@ -16,7 +16,6 @@ include { SAMPLETOLOCUS } from '../modules/local/sampletolocus/main'
 include { MAFFT_ALIGN } from '../modules/nf-core/mafft/align/main'
 include { STRIPR } from '../modules/local/stripr/main'
 include { IQTREE } from '../modules/local/iqtree/main'
-// include { IQTREECONCAT } from '../modules/local/iqtreeconcat/main'
 include { TRIMAL } from '../modules/local/trimal/main'
 include { WASTRAL } from '../modules/local/wastral/main'
 include { CONCATTREES as CONCATGENETREES } from '../modules/local/concattrees/main'
@@ -174,8 +173,6 @@ workflow TREEINFERENCE {
 
     if (params.use_concatenated_tree) {
 
-        SUPERMATRIX.out.supermatrix.view()
-        SUPERMATRIX.out.partitions.view()
         // Run trees on the supermatrix.
         if (params.tree_engine == 'iqtree') {
             concat_tree_output = IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )
