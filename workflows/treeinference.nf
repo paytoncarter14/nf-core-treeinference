@@ -162,8 +162,10 @@ workflow TREEINFERENCE {
 
     if (params.use_concatenated_tree || params.use_quartet_sampling) {
 
+        countuniqueseqs_out.map{it[1]}.collect().map{[[id: 'all_loci'], it]}
+
         // Make alignment supermatrix for concatenated tree and quartet sampling
-        SUPERMATRIX ( countuniqueseqs_out.collect().map{[[id: 'all_loci'], it]} )
+        SUPERMATRIX ( countuniqueseqs_out.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
 
     }
 
