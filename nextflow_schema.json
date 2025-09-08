@@ -202,6 +202,10 @@
         "use_quartet_sampling": {
             "type": "boolean",
             "default": true
+        },
+        "input_format": {
+            "type": "string",
+            "default": "sample"
         }
     }
 }

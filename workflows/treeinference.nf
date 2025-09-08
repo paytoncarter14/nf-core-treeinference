@@ -131,6 +131,7 @@ workflow TREEINFERENCE {
     // This filter is necessary to prevent errors when IQTREE
     // tries to make bootstraps with fewer than 4 samples.
     COUNTUNIQUESEQS { concattrees_input }
+    countuniqueseqs_out = COUNTUNIQUESEQS.out.fasta.filter{it[2].toInteger() >= 4}.map{it[0..1]}
 
     // #################################### //
     // Make gene trees with selected engine //
@@ -140,11 +141,10 @@ workflow TREEINFERENCE {
     if (params.use_wastral) {
 
         // Run trees on each locus to create gene trees
-        tree_input = COUNTUNIQUESEQS.out.fasta.map{it[0..1]}
         if (params.tree_engine == 'iqtree') {
-            tree_output = IQTREE ( tree_input, [] )
+            tree_output = IQTREE ( countuniqueseqs_out, [] )
         } else if (params.tree_engine == 'veryfasttree') {
-            tree_output = VERYFASTTREE ( tree_input )
+            tree_output = VERYFASTTREE ( countuniqueseqs_out )
         }
 
         // Concatenate trees
@@ -163,7 +163,7 @@ workflow TREEINFERENCE {
     if (params.use_concatenated_tree || params.use_quartet_sampling) {
 
         // Make alignment supermatrix for concatenated tree and quartet sampling
-        SUPERMATRIX ( COUNTUNIQUESEQS.out.fasta.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
+        SUPERMATRIX ( countuniqueseqs_out.collect().map{[[id: 'all_loci'], it]} )
 
     }
 
