@@ -4,6 +4,7 @@
 // TODO: stubs and versions in all modules
 // TODO: parameter and input validation
 // TODO: concatenated alignment matrix
+// TODO: group small samples together to reduce number of jobs?
 
 include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
@@ -15,7 +16,6 @@ include { SAMPLETOLOCUS } from '../modules/local/sampletolocus/main'
 include { MAFFT_ALIGN } from '../modules/nf-core/mafft/align/main'
 include { STRIPR } from '../modules/local/stripr/main'
 include { IQTREE } from '../modules/local/iqtree/main'
-// include { IQTREECONCAT } from '../modules/local/iqtreeconcat/main'
 include { TRIMAL } from '../modules/local/trimal/main'
 include { WASTRAL } from '../modules/local/wastral/main'
 include { CONCATTREES as CONCATGENETREES } from '../modules/local/concattrees/main'
@@ -26,7 +26,7 @@ include { QUARTETSAMPLING as QUARTETSAMPLING_WASTRAL } from '../modules/local/qu
 include { COUNTUNIQUESEQS } from '../modules/local/countuniqueseqs/main'
 include { VERYFASTTREE } from '../modules/local/veryfasttree/main'
 include { VERYFASTTREE as VERYFASTTREECONCAT } from '../modules/local/veryfasttree/main'
-include { IQTREE as IQTREECONCAT } from '../modules/local/iqtree/main'
+include { IQTREECONCAT } from '../modules/local/iqtreeconcat/main'
 
 workflow TREEINFERENCE {
 
@@ -37,67 +37,75 @@ workflow TREEINFERENCE {
     main:
 
     ch_versions = Channel.empty()
-    input_ch = Channel.fromPath(input_dir + '/*.fasta')
+
+    if (params.input_format == 'sample') {
+
+        input_ch = Channel.fromPath(input_dir + '/*.fasta')
+
+        // ############## //
+        // Get locus list //
+        // ############## //
+
+        // --locus_list is a text file with one locus per line.
+        // If --locus_list is not provided, all loci in the samples are used instead.
+        if (params.locus_list == null) {
+            GETLOCUSLIST(input_ch.collect())
+            locus_list = GETLOCUSLIST.out.loci
+        } else {
+            locus_list = Channel.fromPath(params.locus_list)
+        }
+        locus_list = locus_list.splitText().map{it.trim()}
+
+        // --exclude_list is a text file with one locus per line.
+        // Any loci in the file are excluded.
+        if (params.exclude_list != null) {
+            exclude_set = file(params.exclude_list).readLines().collect{it.trim()}.toSet()
+            locus_list = locus_list.filter{!exclude_set.contains(it[1])}
+        }
+
+        // ################################ //
+        // Filter by minimum locus coverage //
+        // ################################ //
+
+        // For example, if --min_locus_coverage is 0.7 and there are 100 loci,
+        // taxa with fewer than 70 loci are omitted.
+        locus_count = locus_list.count()
+        sample_count = input_ch.count()
+
+        input_ch = input_ch.combine(locus_count).filter{file, resolved_locus_count ->
+            file.readLines().count{it.startsWith(">")} / resolved_locus_count > params.min_locus_coverage
+        }.map{it[0]}
+
+        sample_count.combine(input_ch.count()).subscribe{x, y -> log.info("${y} out of ${x} samples passed the min_locus_coverage filter")}
+
+        locus_list = locus_list.collect().map{[[id: 'all_loci'], it]}
+        input_ch = input_ch.collect().map{[[id: 'all_fasta'], it]}
 
 
-    // ############## //
-    // Get locus list //
-    // ############## //
+        // ##################################### //
+        // Convert files per sample to per locus //
+        // and filter by minimum sample coverage //
+        // ##################################### //
 
-    // --locus_list is a text file with one locus per line.
-    // If --locus_list is not provided, all loci in the samples are used instead.
-    if (params.locus_list == null) {
-        GETLOCUSLIST(input_ch.collect())
-        locus_list = GETLOCUSLIST.out.loci
-    } else {
-        locus_list = Channel.fromPath(params.locus_list)
+        SAMPLETOLOCUS ( locus_list, input_ch )
+
+        // Remove empty files.
+        mafft_input = SAMPLETOLOCUS.out.fasta.map{it[1]}.flatten().map{[[id: it.simpleName], it]}.filter{it[1].size() > 0}
+
+        // For example, if --min_taxon_coverage is 0.7 and there are 100 taxa,
+        // loci with fewer than 70 samples are omitted.
+
+        mafft_input = mafft_input.combine(sample_count).filter{_meta, file, resolved_sample_count ->
+            file.readLines().count{it.startsWith(">")} / resolved_sample_count > params.min_taxon_coverage
+        }.map{it[0..1]}
+
+        mafft_input.count().combine(locus_count).subscribe{x, y -> log.info("${x} out of ${y} loci passed the min_sample_coverage filter")}
+
+    } else if (params.input_format = 'sample') {
+
+        mafft_input = Channel.fromPath(input_dir + '/*.fasta').map{[[id: it.simpleName], it]}
+
     }
-    locus_list = locus_list.splitText().map{it.trim()}
-    
-    // --exclude_list is a text file with one locus per line.
-    // Any loci in the file are excluded.
-    if (params.exclude_list != null) {
-        exclude_set = file(params.exclude_list).readLines().collect{it.trim()}.toSet()
-        locus_list = locus_list.filter{!exclude_set.contains(it[1])}
-    }
-
-    // ################################ //
-    // Filter by minimum locus coverage //
-    // ################################ //
-
-    // For example, if --min_locus_coverage is 0.7 and there are 100 loci,
-    // taxa with fewer than 70 loci are omitted.
-    locus_count = locus_list.count()
-    sample_count = input_ch.count()
-
-    input_ch = input_ch.combine(locus_count).filter{file, resolved_locus_count ->
-        file.readLines().count{it.startsWith(">")} / resolved_locus_count > params.min_locus_coverage
-    }.map{it[0]}
-
-    sample_count.combine(input_ch.count()).subscribe{x, y -> log.info("${y} out of ${x} samples passed the min_locus_coverage filter")}
-
-    locus_list = locus_list.collect().map{[[id: 'all_loci'], it]}
-    input_ch = input_ch.collect().map{[[id: 'all_fasta'], it]}
-
-
-    // ##################################### //
-    // Convert files per sample to per locus //
-    // and filter by minimum sample coverage //
-    // ##################################### //
-
-    SAMPLETOLOCUS ( locus_list, input_ch )
-
-    // Remove empty files.
-    mafft_input = SAMPLETOLOCUS.out.fasta.map{it[1]}.flatten().map{[[id: it.simpleName], it]}.filter{it[1].size() > 0}
-
-    // For example, if --min_taxon_coverage is 0.7 and there are 100 taxa,
-    // loci with fewer than 70 samples are omitted.
-
-    mafft_input = mafft_input.combine(sample_count).filter{_meta, file, resolved_sample_count ->
-        file.readLines().count{it.startsWith(">")} / resolved_sample_count > params.min_taxon_coverage
-    }.map{it[0..1]}
-
-    mafft_input.count().combine(locus_count).subscribe{x, y -> log.info("${x} out of ${y} loci passed the min_sample_coverage filter")}
 
     // ################ //
     // Align with MAFFT //
@@ -123,6 +131,7 @@ workflow TREEINFERENCE {
     // This filter is necessary to prevent errors when IQTREE
     // tries to make bootstraps with fewer than 4 samples.
     COUNTUNIQUESEQS { concattrees_input }
+    countuniqueseqs_out = COUNTUNIQUESEQS.out.fasta.filter{it[2].toInteger() >= 4}.map{it[0..1]}
 
     // #################################### //
     // Make gene trees with selected engine //
@@ -130,13 +139,12 @@ workflow TREEINFERENCE {
     // #################################### //
 
     if (params.use_wastral) {
-    
+
         // Run trees on each locus to create gene trees
-        tree_input = COUNTUNIQUESEQS.out.fasta.map{it[0..1]}
         if (params.tree_engine == 'iqtree') {
-            tree_output = IQTREE ( tree_input, [] )
+            tree_output = IQTREE ( countuniqueseqs_out, [] )
         } else if (params.tree_engine == 'veryfasttree') {
-            tree_output = VERYFASTTREE ( tree_input )
+            tree_output = VERYFASTTREE ( countuniqueseqs_out )
         }
 
         // Concatenate trees
@@ -154,8 +162,10 @@ workflow TREEINFERENCE {
 
     if (params.use_concatenated_tree || params.use_quartet_sampling) {
 
+        countuniqueseqs_out.map{it[1]}.collect().map{[[id: 'all_loci'], it]}
+
         // Make alignment supermatrix for concatenated tree and quartet sampling
-        SUPERMATRIX ( COUNTUNIQUESEQS.out.fasta.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
+        SUPERMATRIX ( countuniqueseqs_out.map{it[1]}.collect().map{[[id: 'all_loci'], it]} )
 
     }
 
@@ -167,11 +177,11 @@ workflow TREEINFERENCE {
 
         // Run trees on the supermatrix.
         if (params.tree_engine == 'iqtree') {
-            concat_tree_output = IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )     
+            concat_tree_output = IQTREECONCAT ( SUPERMATRIX.out.supermatrix, SUPERMATRIX.out.partitions )
         } else if (params.tree_engine == 'veryfasttree') {
             concat_tree_output = VERYFASTTREECONCAT ( SUPERMATRIX.out.supermatrix )
         }
-    
+
     }
 
     // Use IQTREE to calculate gCF.
@@ -194,7 +204,7 @@ workflow TREEINFERENCE {
     // Cleanup //
     // ####### //
 
-    /* TODO: stats collection 
+    /* TODO: stats collection
     CREATEDB(
         input_ch.map{it[1]}.collect(),
         SAMPLETOLOCUS.out.stats.map{it[1]}.collect()

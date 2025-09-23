@@ -8,8 +8,8 @@ process TRIMAL {
     tuple val(meta), path(fasta)
 
     output:
-    tuple val(meta), path("*.trimmed.fasta"), emit: fasta
-    path "versions.yml" , emit: versions
+    tuple val(meta), path("*.trimmed.fasta"), emit: fasta, optional: true
+    path "versions.yml" , emit: versions, optional: true
 
     when:
     task.ext.when == null || task.ext.when
