@@ -1,6 +1,6 @@
 process QUARTETSAMPLING {
     tag "$meta.id"
-    label 'process_high'
+    label 'process_highlong'
     // conda "${moduleDir}/environment.yml"
     container 'https://raw.githubusercontent.com/paytoncarter14/containers/refs/heads/main/quartet_sampling_1.3.1b.sif'
     
