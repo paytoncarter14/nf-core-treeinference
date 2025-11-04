@@ -15,6 +15,6 @@ process COUNTUNIQUESEQS {
 
     script:
     """
-    awk '!/^>/ {seq[\$0]} END {print length(seq)}' "${fasta}"
+    awk '/^>/ {seq[\$0]} END {print length(seq)}' "${fasta}"
     """
 }

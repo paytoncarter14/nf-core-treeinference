@@ -18,7 +18,7 @@ process WASTRAL {
 
     script:
     """
-    wastral -i ${trees} -o wastral.treefile -t ${task.cpus}
+    wastral -i ${trees} -o wastral.treefile -t ${task.cpus} -R
     """
 
     stub:
