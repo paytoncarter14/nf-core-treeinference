@@ -22,7 +22,7 @@ process IQTREE {
     def prefix = task.ext.prefix ?: meta.id
     def partition_flag = partitions ? '-p ${partitions}' : ''
     """
-    iqtree -s ${fasta} ${partition_flag} -bnni -bb 1000 -safe -nt ${task.cpus} -pre ${prefix}
+    iqtree -s ${fasta} ${partition_flag} -bnni -bb 1000 -safe -nt AUTO -pre ${prefix}
     touch versions.yml
     """
 
